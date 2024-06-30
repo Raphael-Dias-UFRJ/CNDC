@@ -1,3 +1,6 @@
-streamlit
+streamlit==1.36.0
 st-gsheets-connection
-numpy==1.26.3
+numpy==1.21.0
+pandas
+random
+git+https://github.com/streamlit/gsheets-connection
