@@ -81,7 +81,7 @@ if submit_button:
         if not nome or not instituicao or not primeiro_torneio or not data_primeiro_torneio or not genero or not cor_raça or not cidade_origem or not estado_origem or not email or not telefone:
             st.warning("Por favor, preencha todos os campos para seguir com Cadastro")
             st.stop()
-        elif existing_data["email"].contains(email).any():
+        elif existing_data["email"].astype(str).str.contains(email).any():
             st.warning("Já Existe um debatedor com esse e-mail cadastrado")
             st.stop()
         else:
