@@ -36,9 +36,18 @@ sds = [
     'SDP',
     'SDdUFSC',
     'SDUFES',
-    'SDFDV',
     'Veritas',
     'SDUERJ'
+]
+
+id_genero = [
+    "Homem Cis",
+    "Mulher Cis",
+    "Homem Trans",
+    "Mulher Trans",
+    "Não Binário",
+    "Gênero Fluido",
+    "Outro",
 ]
 
 #Criação de um novo debatedor
@@ -47,7 +56,7 @@ with st.form(key="debatedor_form"):
     instituicao = st.selectbox("Sociedade de Debates", options=sds, index=None)
     primeiro_torneio = st.text_input(label="Primeiro Torneio")
     data_primeiro_torneio = st.date_input(label="Data do Primeiro Torneio (Primeiro Dia)")
-    genero = st.text_input(label="Gênero")
+    genero = st.selectbox("Identidade de Gênero", options=id_genero, index=None)
     cor_raça = st.selectbox("Cor/Raça", options=Cor_raça, index=None)
     cidade_origem = st.text_input(label="Cidade de Origem")
     estado_origem = st.text_input(label="Estado de Origem(sigla)")
@@ -69,14 +78,17 @@ valor_unico_cndc = ''.join(random_numbers)
 
 cndc = mes_codigo_cndc + ano_codigo_cndc + valor_unico_cndc
 
-'''
-while existing_data["cndc_code"].str.contains(cndc).any():
-    random_numbers = [str(random.randint(0, 9)) for _ in range(3)]
-    valor_unico_cndc = ''.join(random_numbers)
-    cndc = mes_codigo_cndc + ano_codigo_cndc + valor_unico_cndc
-'''
+
+
+
 
 if submit_button:
+        #Check existing CNDC
+        while existing_data["cndc_code"].astype(str).str.contains(cndc).any():
+            random_numbers = [str(random.randint(0, 9)) for _ in range(3)]
+            valor_unico_cndc = ''.join(random_numbers)
+            cndc = mes_codigo_cndc + ano_codigo_cndc + valor_unico_cndc
+
         # Check if all mandatory fields are filled
         if not nome or not instituicao or not primeiro_torneio or not data_primeiro_torneio or not genero or not cor_raça or not cidade_origem or not estado_origem or not email or not telefone:
             st.warning("Por favor, preencha todos os campos para seguir com Cadastro")
@@ -89,7 +101,7 @@ if submit_button:
             debater_data = pd.DataFrame(
                 [
                     {
-                        "cdc_code": cndc,
+                        "cndc_code": cndc,
                         "nome": nome,
                         "instituicao": instituicao,
                         "primeiro_torneio": primeiro_torneio,
