@@ -11,7 +11,7 @@ st.write('Criando conexões, reconhecendo destaques, promovendo debatedores!')
 conn = st.connection('gsheets', type=GSheetsConnection)
 
 #Busca por dados
-existing_data = conn.read(worksheet='CNDC', usecols = list(range(11)), ttl=5)
+existing_data = conn.read(worksheet='CNDC', usecols = list(range(12)), ttl=5)
 existing_data = existing_data.dropna(how='all')
 
 #Lista de seleções
@@ -50,6 +50,15 @@ id_genero = [
     "Outro",
 ]
 
+orientacao = [
+    "Heterossexual",
+    "Homossexual",
+    "Bissexual-pansexual",
+    "Assexual",
+    "Outro",
+    "Prefiro não declarar"
+]
+
 #Criação de um novo debatedor
 with st.form(key="debatedor_form"):
     nome = st.text_input(label="Nome Completo")
@@ -57,6 +66,7 @@ with st.form(key="debatedor_form"):
     primeiro_torneio = st.text_input(label="Primeiro Torneio")
     data_primeiro_torneio = st.date_input(label="Data do Primeiro Torneio (Primeiro Dia)")
     genero = st.selectbox("Identidade de Gênero", options=id_genero, index=None)
+    orientacao_sexual = st.selectbox("Orientação Sexual",options= orientacao, index=None)
     cor_raça = st.selectbox("Cor/Raça", options=Cor_raça, index=None)
     cidade_origem = st.text_input(label="Cidade de Origem")
     estado_origem = st.text_input(label="Estado de Origem(sigla)")
@@ -107,6 +117,7 @@ if submit_button:
                         "primeiro_torneio": primeiro_torneio,
                         "data_primeiro_torneio": data_primeiro_torneio.strftime("%d-%m-%y"),
                         "genero": genero,
+                        "orientacao_sexual":orientacao_sexual,
                         "cor_raça": cor_raça,
                         "cidade_origem": cidade_origem,
                         "estado_origem": estado_origem,
