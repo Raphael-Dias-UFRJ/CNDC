@@ -1,6 +1,7 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
+from pyUFbr.baseuf import ufbr
 import random
 
 #Display the title and the description
@@ -11,7 +12,7 @@ st.write('Criando conexões, reconhecendo destaques, promovendo debatedores!')
 conn = st.connection('gsheets', type=GSheetsConnection)
 
 #Busca por dados
-existing_data = conn.read(worksheet='CNDC', usecols = list(range(12)), ttl=5)
+existing_data = conn.read(worksheet='CNDC', usecols = list(range(14)), ttl=5)
 existing_data = existing_data.dropna(how='all')
 
 #Lista de seleções
@@ -59,6 +60,13 @@ orientacao = [
     "Prefiro não declarar"
 ]
 
+opcao_deficiencia = [
+    "Sim",
+    "Não"
+]
+
+
+
 #Criação de um novo debatedor
 with st.form(key="debatedor_form"):
     nome = st.text_input(label="Nome Completo")
@@ -68,8 +76,10 @@ with st.form(key="debatedor_form"):
     genero = st.selectbox("Identidade de Gênero", options=id_genero, index=None)
     orientacao_sexual = st.selectbox("Orientação Sexual",options= orientacao, index=None)
     cor_raça = st.selectbox("Cor/Raça", options=Cor_raça, index=None)
-    cidade_origem = st.text_input(label="Cidade de Origem")
-    estado_origem = st.text_input(label="Estado de Origem(sigla)")
+    deficiencia = st.selectbox("Você é uma pessoa com deficiência?\n \nLembrando que pela Lei Federal nº 12.764-12, pessoas com transtornos do espectro autista são consideradas PCD para todos os efeitos legais", options=opcao_deficiencia, index = None)
+    especificacao_deficiencia = st.text_input(label="Se sim, especifique: \n \nDeficiência física, auditiva, múltipla, TEA, dentre outras. Além de categorizar, é importante identificar, em especial, condições que exijam adequações em acessibilidade em atividades virtuais ou presenciais ")
+    estado_origem = st.selectbox("Estado de Origem", options=ufbr.list_uf, index = None)
+    cidade_origem = st.text_input(label = "Cidade de Origem")
     email = st.text_input(label="Email")
     telefone = st.text_input(label="Telefone")
 
@@ -119,6 +129,8 @@ if submit_button:
                         "genero": genero,
                         "orientacao_sexual":orientacao_sexual,
                         "cor_raça": cor_raça,
+                        "deficiencia": deficiencia,
+                        "descricao_deficiencia": especificacao_deficiencia,
                         "cidade_origem": cidade_origem,
                         "estado_origem": estado_origem,
                         "email": email,
