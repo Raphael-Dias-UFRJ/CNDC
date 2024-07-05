@@ -12,17 +12,9 @@ conn = st.connection('gsheets', type=GSheetsConnection)
 
 #Bases utilizadas
 cndc = conn.read(worksheet='CNDC', usecols = list(range(14)), ttl=5).dropna(how='all')
-cnsd = conn.read(worksheet='CNSD', usecols = list(range(7)), ttl=5).dropna(how='all')
 campeonatos = conn.read(worksheet='Campeonatos', usecols = list(range(6)), ttl=5).dropna(how='all')
-juizes = conn.read(worksheet='Juizes', usecols = list(range(5)), ttl=5).dropna(how='all')
-debatedores = conn.read(worksheet='Debatedores', usecols = list(range(6)), ttl=5).dropna(how='all')
-speakers = conn.read(worksheet='speakers', usecols = list(range(5)), ttl=5).dropna(how='all')
-resultados = conn.read(worksheet='resultados', usecols = list(range(7)), ttl=5).dropna(how='all')
-mocoes = conn.read(worksheet='mocoes', usecols = list(range(4)), ttl=5).dropna(how='all')
 
 st.sidebar.link_button("Faça seu Cadastro Nacional de Debatedor Universitário", 'https://www.instagram.com/condeb.debates/')
-
-provisorio = resultados['rodada'].unique()
 
 with st.form(key="consulta_form"):
     camp = st.multiselect("Selecione o campeonato", campeonatos['nome_camp'])
@@ -33,6 +25,8 @@ with st.form(key="consulta_form"):
 
 
 if busca:
+    resultados = conn.read(worksheet='resultados', usecols = list(range(7)), ttl=5).dropna(how='all')
+    mocoes = conn.read(worksheet='mocoes', usecols = list(range(4)), ttl=5).dropna(how='all')
     base_resultados = resultados[(resultados['cod_camp'].isin(camp_code)) & (resultados['rodada'].isin(rodada))]
     resultados_por_rodada = base_resultados.pivot(index=['cod_camp', 'rodada', 'adjudicators'], columns='side', values='team_result').reset_index()
     if len(resultados_por_rodada.columns)>6:
