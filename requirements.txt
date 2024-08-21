@@ -1,4 +1,4 @@
-streamlit
-st-gsheets-connection
-pyufbr
+streamlit==1.36.0
+st-gsheets-connection==0.0.4
+pyufbr==0.1.0
 numpy==1.26.3
