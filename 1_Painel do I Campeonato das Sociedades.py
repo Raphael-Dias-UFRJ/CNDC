@@ -1,6 +1,5 @@
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
-import numpy as np
 import pandas as pd
 
 st.set_page_config(
