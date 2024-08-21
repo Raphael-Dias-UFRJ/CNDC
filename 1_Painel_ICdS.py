@@ -13,7 +13,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed",
 )
 
-names = ["Master","SDUFRJ","Hermenêutica","SDdUFC","SDS","Senatus","GDO","SDP","SDdUFSC"]
+names = ["Master","SDUFRJ","Hermenêutica","SdDUFC","SDS","Senatus","GDO","SDP","SdDUFSC"]
 usernames = ["master","sdufrj","hermeneutica","sddufc","sds","senatus","gdo","sdp","sddufsc"]
 
 file_path = Path(__file__).parent / "hashed_pw.pkl"
