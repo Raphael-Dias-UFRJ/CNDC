@@ -215,8 +215,6 @@ if authentication_status:
                 conn.update(worksheet='TdS_Suporte', data=updated_df)
                 st.sidebar.success('Escalação Cadastrada!')
 
-    col5, col6,col7 = st.columns(3)
-
     def open_image(path: str):
         with open(path, "rb") as p:
             file = p.read()
@@ -226,13 +224,12 @@ if authentication_status:
     sds["Equipe"] = sds.apply(lambda x: open_image(x['Equipe']), axis=1)
     sds = sds[['Equipe','Instituição','Pontos','N de Primeiros','Total Sps','Juizes Enviados']]
 
-    with col6:
-        st.write('### TABELA DA COMPETIÇÃO')
-        st.dataframe(sds,
-                     column_config={
-                         "Total Sps": st.column_config.ProgressColumn('Total Sps', format="%d", min_value=0, max_value=str(sds['Total Sps'].max())),
-                         "Equipe":st.column_config.ImageColumn()
-                     })
+    st.write('### TABELA DA COMPETIÇÃO')
+    st.dataframe(sds,
+                 column_config={
+                     "Total Sps": st.column_config.ProgressColumn('Total Sps', format="%d", min_value=0, max_value=str(sds['Total Sps'].max())),
+                     "Equipe":st.column_config.ImageColumn()
+                 })
 
     st.divider()
 
