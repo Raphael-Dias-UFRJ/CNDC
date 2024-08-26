@@ -3,17 +3,21 @@ from pathlib import Path
 import streamlit as st
 from streamlit_gsheets import GSheetsConnection
 import pandas as pd
+import base64
 
 import streamlit_authenticator as stauth
+import pandas as pd
 
 st.set_page_config(
-    page_title="Acompanhamento do Campeonato das Sociedades",
+    page_title="I Campeonato das Sociedades",
     page_icon=":trophy:",
     layout="wide",
     initial_sidebar_state="collapsed",
 )
 
-names = ["Master","SDUFRJ","Hermenêutica","SdDUFC","SDS","Senatus","GDO","SDP","SdDUFSC"]
+st.logo('logo_sds/CONDEB PAG 1.png')
+
+names = ["Master","SDUFRJ","Hermenêutica","SDdUFC","SDS","Senatus","GDO","SDP","SDdUFSC"]
 usernames = ["master","sdufrj","hermeneutica","sddufc","sds","senatus","gdo","sdp","sddufsc"]
 
 file_path = Path(__file__).parent / "hashed_pw.pkl"
@@ -37,14 +41,6 @@ if authentication_status == None:
     st.warning("Por favor, faça o login")
 
 if authentication_status:
-    #Display the title and the description
-    try:
-    # check if the key exists in session state
-        _ = st.session_state.keep_graphics
-    except AttributeError:
-        # otherwise set it to false
-        st.session_state.keep_graphics = False
-
     st.write('# PAINEL DE ACOMPANHAMENTO DO CAMEONATO DAS SOCIEDADES')
     st.write('### Confira o andamento da maior competição entre as Sociedades de Debates do Brasil!')
     st.sidebar.caption('Login como: ' + name)
@@ -64,6 +60,9 @@ if authentication_status:
     lista_rodadas = rodadas['Rodada'].unique()
     sds = delegacoes['instituicao'].unique()
     sds = pd.DataFrame(sds, columns=['Instituição'])
+    imagens_sds = ['logo_sds/sdufrj.jpeg', 'logo_sds/gdo.jpeg','logo_sds/sddufc.jpeg','logo_sds/sds.jpeg'
+                   ,'logo_sds/sddufsc.jpeg','logo_sds/hermeneutica.jpeg','logo_sds/senatus.jpeg','logo_sds/sdp.jpeg']
+    sds['Equipe'] = imagens_sds
     sds.set_index('Instituição', inplace=True)
     sds["Pontos"] = 0
     sds["N de Primeiros"] = 0
@@ -85,7 +84,7 @@ if authentication_status:
     base_resultados = base_resultados.pivot(index=['Rodada','Sala'], columns='Casa', values='Resultado').reset_index()
     base_resultados = pd.merge(base_resultados, juizes_sintetico, on=['Sala','Rodada'], how='left').reset_index(drop=True).set_index('Rodada')
     base_resultados = base_resultados[['Sala','1° GOVERNO','1ª OPOSIÇÃO','2° GOVERNO','2ª OPOSIÇÃO','Juizes']]
-    rodada_corrente = base_resultados[base_resultados['Juizes'].isna()].index[0]
+    rodada_corrente = resultados[resultados['Classificação'].isnull()]['Rodada'].reset_index(drop=True)[0]
     data_rodada_corrente = rodadas[rodadas['Rodada'] == rodada_corrente]['Data'].reset_index(drop=True)[0]
     base_resultados = base_resultados[base_resultados['Juizes'].notna()]
 
@@ -94,9 +93,9 @@ if authentication_status:
     juizes_rodada = pd.DataFrame(juizes_rodada, columns=['Juizes'])
 
     #----------- DEFINIÇÃO DE DELEGAÇÃO DO LOGIN ----------------
+
     if name != 'Master':
         debatedores = delegacoes[delegacoes['instituicao'] == name]['Nome']
-
 
     for index, row in partidas_agregado.iterrows():
         equipe = row['Instituição']
@@ -126,8 +125,61 @@ if authentication_status:
     #----------- ATUALIZAÇÃO DE DEBATEDOR DA PARTIDA ----------------
 
     if name == 'Master':
-        st.sidebar.write('### usuário Administrador')
+        st.sidebar.write('### Aconpanhamento de inscrições: Rodada ' + str(int(rodada_corrente)) + '(' + str(data_rodada_corrente) + ')')
         st.sidebar.dataframe(temporario_rodada[temporario_rodada['rodada'] == int(rodada_corrente)])
+        falta_escalacao = sds[~sds['Instituição'].isin(temporario_rodada[temporario_rodada['rodada'] == int(rodada_corrente)]['delegação'].unique())]
+        if not falta_escalacao.empty:
+            st.sidebar.warning('### Atenção! As seguintes equipes ainda não escalaram seus debatedores:' + str(falta_escalacao['Instituição'].values.tolist()))
+        else:
+            escalacao_completa = temporario_rodada[temporario_rodada['rodada'] == int(rodada_corrente)]
+            st.sidebar.markdown('### Alocação de Juízes')
+            with st.form(key='alocacao_form'):
+                with st.sidebar:
+                    chair_sala_1 = st.text_input('Chair Sala 1')
+                    chair_sala_2 = st.text_input('Chair Sala 2')
+                    juiz_sala_1 = st.multiselect('Juiz Sala 1', escalacao_completa[escalacao_completa['juiz'].notnull()]['juiz'].unique())
+                    juiz_sala_2 = st.multiselect('Juiz Sala 2', escalacao_completa[escalacao_completa['juiz'].notnull()]['juiz'].unique())
+                    cadastrar_aloc = st.form_submit_button(label = "Cadastrar")
+
+            if cadastrar_aloc:
+                if not chair_sala_1 or not chair_sala_2 or not juiz_sala_1 or not juiz_sala_2:
+                    st.warning("Por favor, preencha todos os campos para seguir com Cadastro")
+                    st.stop()
+                else:
+                    # Create a new dataframe
+                    alocacao = pd.DataFrame(columns=["Rodada", "Sala", "Juiz", "Posição", "SD"])
+
+                    # Fill the dataframe based on the given rules
+                    alocacao = alocacao.append({"Rodada": int(rodada_corrente), "Sala": 1, "Juiz": chair_sala_1, "Posição": "(c)", "SD": "Condeb"}, ignore_index=True)
+                    alocacao = alocacao.append({"Rodada": int(rodada_corrente), "Sala": 2, "Juiz": chair_sala_2, "Posição": "(c)", "SD": "Condeb"}, ignore_index=True)
+                    for juiz in juiz_sala_1:
+                        alocacao = alocacao.append({"Rodada": int(rodada_corrente), "Sala": 1, "Juiz": juiz, "Posição": "(w)", "SD": escalacao_completa.loc[escalacao_completa["juiz"] == juiz, "delegação"].values[0]}, ignore_index=True)
+                    for juiz in juiz_sala_2:
+                        alocacao = alocacao.append({"Rodada": int(rodada_corrente), "Sala": 2, "Juiz": juiz, "Posição": "(w)", "SD": escalacao_completa.loc[escalacao_completa["juiz"] == juiz, "delegação"].values[0]}, ignore_index=True)
+                    alocacao['Juiz_cargo'] = alocacao['Juiz'] + alocacao['Posição']
+                    alocacao['Juizes'] = alocacao[['Rodada','Sala','Juiz_cargo']].groupby(['Rodada','Sala'])['Juiz_cargo'].transform(lambda x: ','.join(x))
+                    updated_df = pd.concat([juizes, alocacao], ignore_index=True)
+                    conn.update(worksheet='TdS_Juizes', data=updated_df)
+                    st.sidebar.success('Escalação Cadastrada!')
+            resultado_rodada = resultados[resultados['Rodada'] == int(rodada_corrente)]
+            st.markdown('### INPUT DE RESULTADO DA RODADA: ' + str(int(rodada_corrente)) + '(' + str(data_rodada_corrente) + ')')
+            input_resultado = st.data_editor(resultado_rodada, column_config=
+                                             {'Debatedor': st.column_config.SelectboxColumn('Debatedor', options=delegacoes['Nome'].unique()),
+                                              'Classificação': st.column_config.SelectboxColumn('Classificação', options=['1°', '2°', '3°', '4°'])})
+            resultado_s1 = st.button('Salvar Resultado Sala 1')
+            resultado_s2 = st.button('Salvar Resultado Sala 2')
+
+            if resultado_s1:
+                input_sala_1 = input_resultado[input_resultado['Sala'] == 1]
+                resultados.update(input_sala_1)
+                conn.update(worksheet='TdS_Resultados', data=resultados)
+                st.success('Resultado da Sala 1 Salvo!')
+            if resultado_s2:
+                input_sala_2 = input_resultado[input_resultado['Sala'] == 2]
+                resultados.update(input_sala_2)
+                conn.update(worksheet='TdS_Resultados', data=resultados)
+                st.success('Resultado da Sala 2 Salvo!')
+
     else:
         st.sidebar.write('### Escalação de Equipe (Rodada ' + str(int(rodada_corrente)) + ')')
 
@@ -165,9 +217,22 @@ if authentication_status:
 
     col5, col6,col7 = st.columns(3)
 
+    def open_image(path: str):
+        with open(path, "rb") as p:
+            file = p.read()
+            return f"data:image/png;base64,{base64.b64encode(file).decode()}"
+
+
+    sds["Equipe"] = sds.apply(lambda x: open_image(x['Equipe']), axis=1)
+    sds = sds[['Equipe','Instituição','Pontos','N de Primeiros','Total Sps','Juizes Enviados']]
+
     with col6:
         st.write('### TABELA DA COMPETIÇÃO')
-        sds
+        st.dataframe(sds,
+                     column_config={
+                         "Total Sps": st.column_config.ProgressColumn('Total Sps', format="%d", min_value=0, max_value=str(sds['Total Sps'].max())),
+                         "Equipe":st.column_config.ImageColumn()
+                     })
 
     st.divider()
 
@@ -176,12 +241,16 @@ if authentication_status:
         st.write('### CHAVEAMENTO')
         tabela_partidas
 
+    with col2:
+        st.write('#### Próxima Rodada: ' + str(int(rodada_corrente)) + '(' + str(data_rodada_corrente) + ')')
+        tabela_partidas.loc[rodada_corrente]
+
     with col10:
         st.write('### CALENDARIO')
         calendario = rodadas[['Rodada','Data','Horário','Escalação Juízes']].set_index('Rodada')
         calendario
 
-    st.write('#### Próxima Rodada: ' + str(int(rodada_corrente)) + '(' + str(data_rodada_corrente) + ')')
+    
     st.divider()
 
     col3, col4 = st.columns(2)
