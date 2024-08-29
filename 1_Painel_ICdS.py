@@ -17,7 +17,7 @@ st.set_page_config(
 
 st.logo('logo_sds/CONDEB PAG 1.png')
 
-names = ["Master","SDUFRJ","Hermenêutica","SDdUFC","SDS","Senatus","GDO","SDP","SDdUFSC"]
+names = ["Master","SDUFRJ","Hermenêutica","SdDUFC","SDS","Senatus","GDO","SDP","SdDUFSC"]
 usernames = ["master","sdufrj","hermeneutica","sddufc","sds","senatus","gdo","sdp","sddufsc"]
 
 file_path = Path(__file__).parent / "hashed_pw.pkl"
@@ -132,6 +132,11 @@ if authentication_status:
             st.sidebar.warning('### Atenção! As seguintes equipes ainda não escalaram seus debatedores:' + str(falta_escalacao['Instituição'].values.tolist()))
         else:
             escalacao_completa = temporario_rodada[temporario_rodada['rodada'] == int(rodada_corrente)]
+            debatedores_rodada = pd.concat([escalacao_completa[['delegação','membro 1']], escalacao_completa[['delegação','membro 2']]])
+            debatedores_rodada['membro 1'].fillna(debatedores_rodada['membro 2'], inplace=True)
+            debatedores_rodada = debatedores_rodada[['delegação','membro 1']].rename(columns={'membro 1':'Nome'})
+
+
             st.sidebar.markdown('### Alocação de Juízes')
             with st.form(key='alocacao_form'):
                 with st.sidebar:
@@ -139,7 +144,7 @@ if authentication_status:
                     chair_sala_2 = st.text_input('Chair Sala 2')
                     juiz_sala_1 = st.multiselect('Juiz Sala 1', escalacao_completa[escalacao_completa['juiz'].notnull()]['juiz'].unique())
                     juiz_sala_2 = st.multiselect('Juiz Sala 2', escalacao_completa[escalacao_completa['juiz'].notnull()]['juiz'].unique())
-                    cadastrar_aloc = st.form_submit_button(label = "Cadastrar")
+                    cadastrar_aloc = st.form_submit_button(label = "Alocar Juízes")
 
             if cadastrar_aloc:
                 if not chair_sala_1 or not chair_sala_2 or not juiz_sala_1 or not juiz_sala_2:
@@ -161,24 +166,160 @@ if authentication_status:
                     updated_df = pd.concat([juizes, alocacao], ignore_index=True)
                     conn.update(worksheet='TdS_Juizes', data=updated_df)
                     st.sidebar.success('Escalação Cadastrada!')
-            resultado_rodada = resultados[resultados['Rodada'] == int(rodada_corrente)]
-            st.markdown('### INPUT DE RESULTADO DA RODADA: ' + str(int(rodada_corrente)) + '(' + str(data_rodada_corrente) + ')')
-            input_resultado = st.data_editor(resultado_rodada, column_config=
-                                             {'Debatedor': st.column_config.SelectboxColumn('Debatedor', options=delegacoes['Nome'].unique()),
-                                              'Classificação': st.column_config.SelectboxColumn('Classificação', options=['1°', '2°', '3°', '4°'])})
-            resultado_s1 = st.button('Salvar Resultado Sala 1')
-            resultado_s2 = st.button('Salvar Resultado Sala 2')
+            st.markdown('### DRAW DA RODADA: ' + str(int(rodada_corrente)) + '(' + str(data_rodada_corrente) + ')')
 
-            if resultado_s1:
-                input_sala_1 = input_resultado[input_resultado['Sala'] == 1]
-                resultados.update(input_sala_1)
-                conn.update(worksheet='TdS_Resultados', data=resultados)
-                st.success('Resultado da Sala 1 Salvo!')
-            if resultado_s2:
-                input_sala_2 = input_resultado[input_resultado['Sala'] == 2]
-                resultados.update(input_sala_2)
-                conn.update(worksheet='TdS_Resultados', data=resultados)
-                st.success('Resultado da Sala 2 Salvo!')
+            draw_rodada = base_resultados[base_resultados.index == int(rodada_corrente)].replace(' - nan', '', regex=True)
+            draw_rodada
+
+            resultado_rodada = resultados[resultados['Rodada'] == int(rodada_corrente)]
+
+    #----------------- RESULTADOS SALA 1 -------------------#
+            with st.form(key='resultado_sala1_form'):
+                st.markdown('### INPUT DE RESULTADO DA SALA 1: ' + str(int(rodada_corrente)) + '(' + str(data_rodada_corrente) + ')')
+                col30, col31 = st.columns(2)
+                with col30:
+                    st.markdown('#### 1° GOVERNO: ' + str(draw_rodada['1° GOVERNO'].values[0]))
+                    col40, col41 = st.columns(2)
+                    with col40:
+                        primeiro_ministro1 = st.selectbox('Primeiro Ministro', debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['1° GOVERNO'].values[0]]['Nome'], index=None)
+                        adjunto_pm1 = st.selectbox('Vice Primeiro Ministro', debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['1° GOVERNO'].values[0]]['Nome'], index=None)
+                    with col41:
+                        sps_pm1 = st.number_input('Sps PM', min_value=50, max_value=100, step=1)
+                        sps_vpm1 = st.number_input('Sps VPM', min_value=50, max_value=100, step=1)
+                    st.markdown('#### 2° GOVERNO: ' + str(draw_rodada['2° GOVERNO'].values[0]))
+                    col50, col51 = st.columns(2)
+                    with col50:
+                        ext_gov1 = st.selectbox('Membro do Governo',debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['2° GOVERNO'].values[0]]['Nome'], index=None)
+                        wp_gov1 = st.selectbox('Whip do Governo', debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['2° GOVERNO'].values[0]]['Nome'], index=None)
+                    with col51:
+                        sps_ext_gov1 = st.number_input('Sps MG', min_value=50, max_value=100, step=1)
+                        sps_wp_gov1 = st.number_input('Sps WPG', min_value=50, max_value=100, step=1)
+
+                with col31:
+                    st.markdown('#### 1ª OPOSIÇÃO: ' + str(draw_rodada['1ª OPOSIÇÃO'].values[0]))
+                    col60, col61 = st.columns(2)
+                    with col60:
+                        lider_oposicao1 = st.selectbox('Líder da Oposição', debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['1ª OPOSIÇÃO'].values[0]]['Nome'], index=None)
+                        adjunto_oposicao1 = st.selectbox('Vice líder da Oposição', debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['1ª OPOSIÇÃO'].values[0]]['Nome'], index=None)
+                    with col61:
+                        sps_lo1 = st.number_input('Sps LO', min_value=50, max_value=100, step=1)
+                        sps_vlo1 = st.number_input('Sps VLO', min_value=50, max_value=100, step=1)
+                    st.markdown('#### 2ª OPOSIÇÃO: ' + str(draw_rodada['2ª OPOSIÇÃO'].values[0]))
+                    col70, col71 = st.columns(2)
+                    with col70:
+                        ext_op1 = st.selectbox('Membro da Oposição', debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['2ª OPOSIÇÃO'].values[0]]['Nome'], index=None)
+                        wp_op1 = st.selectbox('Whip da Oposição', debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['2ª OPOSIÇÃO'].values[0]]['Nome'], index=None)
+                    with col71:
+                        sps_ext_op1 = st.number_input('Sps MO', min_value=50, max_value=100, step=1)
+                        sps_wp_op1 = st.number_input('Sps WPO', min_value=50, max_value=100, step=1)
+                resultado_sala1 = st.form_submit_button('Montar resultado Prelilminar da Sala 1')
+
+            if resultado_sala1:
+                st.session_state.show_confirmation = True
+            
+            if st.session_state.get('show_confirmation', False):
+                st.warning('Resultado Preliminar Sala 1')
+                call_sala_1 = pd.DataFrame(columns=['Posição','Delegação', 'Soma sps'])
+                call_sala_1 = call_sala_1.append({'Posição':'1° GOVERNO','Delegação': draw_rodada['1° GOVERNO'].values[0], 'Soma sps': sps_pm1 + sps_vpm1}, ignore_index=True)
+                call_sala_1 = call_sala_1.append({'Posição':'1ª OPOSIÇÃO','Delegação': draw_rodada['1ª OPOSIÇÃO'].values[0], 'Soma sps': sps_lo1 + sps_vlo1}, ignore_index=True)
+                call_sala_1 = call_sala_1.append({'Posição':'2° GOVERNO','Delegação': draw_rodada['2° GOVERNO'].values[0], 'Soma sps': sps_ext_gov1 + sps_wp_gov1}, ignore_index=True)
+                call_sala_1 = call_sala_1.append({'Posição':'2ª OPOSIÇÃO','Delegação': draw_rodada['2ª OPOSIÇÃO'].values[0], 'Soma sps': sps_ext_op1 + sps_wp_op1}, ignore_index=True)
+                call_sala_1['Colocação'] = call_sala_1['Soma sps'].rank(ascending=False)
+                call_sala_1 = call_sala_1.sort_values('Colocação').set_index('Colocação')
+                call_sala_1
+                confirm1 = st.button('Confirmar Resultado Sala 1')
+                if confirm1:
+                    input_resultado_sala_1 = pd.DataFrame(columns=['Rodada','Sala','Instituição','Debatedor','Casa','Posição','Classificação','Sps'])
+                    input_resultado_sala_1 = input_resultado_sala_1.append({'Rodada': int(rodada_corrente), 'Sala': 1, 'Instituição': draw_rodada['1° GOVERNO'].values[0], 'Debatedor': primeiro_ministro1, 'Casa': '1° GOVERNO', 'Posição': 'PM', 'Classificação': str(int(call_sala_1[call_sala_1['Delegação'] == draw_rodada['1° GOVERNO'].values[0]].index[0])) + '°', 'Sps': sps_pm1}, ignore_index=True)
+                    input_resultado_sala_1 = input_resultado_sala_1.append({'Rodada': int(rodada_corrente), 'Sala': 1, 'Instituição': draw_rodada['1° GOVERNO'].values[0], 'Debatedor': adjunto_pm1, 'Casa': '1° GOVERNO', 'Posição': 'VPM', 'Classificação': str(int(call_sala_1[call_sala_1['Delegação'] == draw_rodada['1° GOVERNO'].values[0]].index[0])) + '°', 'Sps': sps_vpm1}, ignore_index=True)
+                    input_resultado_sala_1 = input_resultado_sala_1.append({'Rodada': int(rodada_corrente), 'Sala': 1, 'Instituição': draw_rodada['1ª OPOSIÇÃO'].values[0], 'Debatedor': lider_oposicao1, 'Casa': '1ª OPOSIÇÃO', 'Posição': 'LO', 'Classificação': str(int(call_sala_1[call_sala_1['Delegação'] == draw_rodada['1ª OPOSIÇÃO'].values[0]].index[0])) + '°', 'Sps': sps_lo1}, ignore_index=True)
+                    input_resultado_sala_1 = input_resultado_sala_1.append({'Rodada': int(rodada_corrente), 'Sala': 1, 'Instituição': draw_rodada['1ª OPOSIÇÃO'].values[0], 'Debatedor': adjunto_oposicao1, 'Casa': '1ª OPOSIÇÃO', 'Posição': 'VLO', 'Classificação': str(int(call_sala_1[call_sala_1['Delegação'] == draw_rodada['1ª OPOSIÇÃO'].values[0]].index[0])) + '°', 'Sps': sps_vlo1}, ignore_index=True)
+                    input_resultado_sala_1 = input_resultado_sala_1.append({'Rodada': int(rodada_corrente), 'Sala': 1, 'Instituição': draw_rodada['2° GOVERNO'].values[0], 'Debatedor': ext_gov1, 'Casa': '2° GOVERNO', 'Posição': 'MG', 'Classificação': str(int(call_sala_1[call_sala_1['Delegação'] == draw_rodada['2° GOVERNO'].values[0]].index[0])) + '°', 'Sps': sps_ext_gov1}, ignore_index=True)
+                    input_resultado_sala_1 = input_resultado_sala_1.append({'Rodada': int(rodada_corrente), 'Sala': 1, 'Instituição': draw_rodada['2° GOVERNO'].values[0], 'Debatedor': wp_gov1, 'Casa': '2° GOVERNO', 'Posição': 'WG', 'Classificação': str(int(call_sala_1[call_sala_1['Delegação'] == draw_rodada['2° GOVERNO'].values[0]].index[0])) + '°', 'Sps': sps_wp_gov1}, ignore_index=True)
+                    input_resultado_sala_1 = input_resultado_sala_1.append({'Rodada': int(rodada_corrente), 'Sala': 1, 'Instituição': draw_rodada['2ª OPOSIÇÃO'].values[0], 'Debatedor': ext_op1, 'Casa': '2ª OPOSIÇÃO', 'Posição': 'MO', 'Classificação': str(int(call_sala_1[call_sala_1['Delegação'] == draw_rodada['2ª OPOSIÇÃO'].values[0]].index[0])) + '°', 'Sps': sps_ext_op1}, ignore_index=True)
+                    input_resultado_sala_1 = input_resultado_sala_1.append({'Rodada': int(rodada_corrente), 'Sala': 1, 'Instituição': draw_rodada['2ª OPOSIÇÃO'].values[0], 'Debatedor': wp_op1, 'Casa': '2ª OPOSIÇÃO', 'Posição': 'WO', 'Classificação': str(int(call_sala_1[call_sala_1['Delegação'] == draw_rodada['2ª OPOSIÇÃO'].values[0]].index[0])) + '°', 'Sps': sps_wp_op1}, ignore_index=True)
+                    resultado_sala_1 = resultados[(resultados['Rodada'] == int(rodada_corrente)) & (resultados['Sala']==1)]
+                    input_resultado_sala_1 = input_resultado_sala_1.set_index(resultado_sala_1.index)
+                    resultado_sala_1.update(input_resultado_sala_1)
+                    resultados.update(resultado_sala_1)
+                    conn.update(worksheet='TdS_Resultados', data=resultados)
+                    st.success('Resultado da Sala 1 Salvo!')
+                st.divider()
+
+        #----------------- RESULTADOS SALA 2 -------------------#
+            with st.form(key='resultado_sala2_form'):
+                st.markdown('### INPUT DE RESULTADO DA SALA 2: ' + str(int(rodada_corrente)) + '(' + str(data_rodada_corrente) + ')')
+                col80, col81 = st.columns(2)
+                with col80:
+                    st.markdown('#### 1° GOVERNO: ' + str(draw_rodada['1° GOVERNO'].values[1]))
+                    col90, col91 = st.columns(2)
+                    with col90:
+                        primeiro_ministro = st.selectbox('Primeiro Ministro', debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['1° GOVERNO'].values[1]]['Nome'], index=None)
+                        adjunto_pm = st.selectbox('Vice Primeiro Ministro', debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['1° GOVERNO'].values[1]]['Nome'], index=None)
+                    with col91:
+                        sps_pm = st.number_input('Sps PM', min_value=50, max_value=100, step=1)
+                        sps_vpm = st.number_input('Sps VPM', min_value=50, max_value=100, step=1)
+                    st.markdown('#### 2° GOVERNO: ' + str(draw_rodada['2° GOVERNO'].values[1]))
+                    col100, col101 = st.columns(2)
+                    with col100:
+                        ext_gov = st.selectbox('Membro do Governo',debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['2° GOVERNO'].values[1]]['Nome'], index=None)
+                        wp_gov = st.selectbox('Whip do Governo', debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['2° GOVERNO'].values[1]]['Nome'], index=None)
+                    with col101:
+                        sps_ext_gov = st.number_input('Sps MG', min_value=50, max_value=100, step=1)
+                        sps_wp_gov = st.number_input('Sps WPG', min_value=50, max_value=100, step=1)
+
+                with col81:
+                    st.markdown('#### 1ª OPOSIÇÃO: ' + str(draw_rodada['1ª OPOSIÇÃO'].values[1]))
+                    col110, col111 = st.columns(2)
+                    with col110:
+                        lider_oposicao = st.selectbox('Líder da Oposição', debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['1ª OPOSIÇÃO'].values[1]]['Nome'], index=None)
+                        adjunto_oposicao = st.selectbox('Vice líder da Oposição', debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['1ª OPOSIÇÃO'].values[1]]['Nome'], index=None)
+                    with col111:
+                        sps_lo = st.number_input('Sps LO', min_value=50, max_value=100, step=1)
+                        sps_vlo = st.number_input('Sps VLO', min_value=50, max_value=100, step=1)
+                    st.markdown('#### 2ª OPOSIÇÃO: ' + str(draw_rodada['2ª OPOSIÇÃO'].values[1]))
+                    col120, col121 = st.columns(2)
+                    with col120:
+                        ext_op = st.selectbox('Membro da Oposição', debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['2ª OPOSIÇÃO'].values[1]]['Nome'], index=None)
+                        wp_op = st.selectbox('Whip da Oposição', debatedores_rodada[debatedores_rodada['delegação'] == draw_rodada['2ª OPOSIÇÃO'].values[1]]['Nome'], index=None)
+                    with col121:
+                        sps_ext_op = st.number_input('Sps MO', min_value=50, max_value=100, step=1)
+                        sps_wp_op = st.number_input('Sps WPO', min_value=50, max_value=100, step=1)
+                resultado_sala2 = st.form_submit_button('Montar resultado Prelilminar da Sala 2')
+
+            if resultado_sala2:
+                st.session_state.show_confirmation = True
+            
+            if st.session_state.get('show_confirmation', False):
+                st.warning('Resultado Preliminar Sala 2')
+                call_sala_2 = pd.DataFrame(columns=['Posição','Delegação', 'Soma sps'])
+                call_sala_2 = call_sala_2.append({'Posição':'1° GOVERNO','Delegação': draw_rodada['1° GOVERNO'].values[1], 'Soma sps': sps_pm + sps_vpm}, ignore_index=True)
+                call_sala_2 = call_sala_2.append({'Posição':'1ª OPOSIÇÃO','Delegação': draw_rodada['1ª OPOSIÇÃO'].values[1], 'Soma sps': sps_lo + sps_vlo}, ignore_index=True)
+                call_sala_2 = call_sala_2.append({'Posição':'2° GOVERNO','Delegação': draw_rodada['2° GOVERNO'].values[1], 'Soma sps': sps_ext_gov + sps_wp_gov}, ignore_index=True)
+                call_sala_2 = call_sala_2.append({'Posição':'2ª OPOSIÇÃO','Delegação': draw_rodada['2ª OPOSIÇÃO'].values[1], 'Soma sps': sps_ext_op + sps_wp_op}, ignore_index=True)
+                call_sala_2['Colocação'] = call_sala_2['Soma sps'].rank(ascending=False)
+                call_sala_2 = call_sala_2.sort_values('Colocação').set_index('Colocação')
+                call_sala_2
+                confirm2 = st.button('Confirmar Resultado Sala 2')
+                if confirm2:
+                    input_resultado_sala_2 = pd.DataFrame(columns=['Rodada','Sala','Instituição','Debatedor','Casa','Posição','Classificação','Sps'])
+                    input_resultado_sala_2 = input_resultado_sala_2.append({'Rodada': int(rodada_corrente), 'Sala': 2, 'Instituição': draw_rodada['1° GOVERNO'].values[1], 'Debatedor': primeiro_ministro, 'Casa': '1° GOVERNO', 'Posição': 'PM', 'Classificação': str(int(call_sala_2[call_sala_2['Delegação'] == draw_rodada['1° GOVERNO'].values[1]].index[0])) + '°', 'Sps': sps_pm}, ignore_index=True)
+                    input_resultado_sala_2 = input_resultado_sala_2.append({'Rodada': int(rodada_corrente), 'Sala': 2, 'Instituição': draw_rodada['1° GOVERNO'].values[1], 'Debatedor': adjunto_pm, 'Casa': '1° GOVERNO', 'Posição': 'VPM', 'Classificação': str(int(call_sala_2[call_sala_2['Delegação'] == draw_rodada['1° GOVERNO'].values[1]].index[0])) + '°', 'Sps': sps_vpm}, ignore_index=True)
+                    input_resultado_sala_2 = input_resultado_sala_2.append({'Rodada': int(rodada_corrente), 'Sala': 2, 'Instituição': draw_rodada['1ª OPOSIÇÃO'].values[1], 'Debatedor': lider_oposicao, 'Casa': '1ª OPOSIÇÃO', 'Posição': 'LO', 'Classificação': str(int(call_sala_2[call_sala_2['Delegação'] == draw_rodada['1ª OPOSIÇÃO'].values[1]].index[0])) + '°', 'Sps': sps_lo}, ignore_index=True)
+                    input_resultado_sala_2 = input_resultado_sala_2.append({'Rodada': int(rodada_corrente), 'Sala': 2, 'Instituição': draw_rodada['1ª OPOSIÇÃO'].values[1], 'Debatedor': adjunto_oposicao, 'Casa': '1ª OPOSIÇÃO', 'Posição': 'VLO', 'Classificação': str(int(call_sala_2[call_sala_2['Delegação'] == draw_rodada['1ª OPOSIÇÃO'].values[1]].index[0])) + '°', 'Sps': sps_vlo}, ignore_index=True)
+                    input_resultado_sala_2 = input_resultado_sala_2.append({'Rodada': int(rodada_corrente), 'Sala': 2, 'Instituição': draw_rodada['2° GOVERNO'].values[1], 'Debatedor': ext_gov, 'Casa': '2° GOVERNO', 'Posição': 'MG', 'Classificação': str(int(call_sala_2[call_sala_2['Delegação'] == draw_rodada['2° GOVERNO'].values[1]].index[0])) + '°', 'Sps': sps_ext_gov}, ignore_index=True)
+                    input_resultado_sala_2 = input_resultado_sala_2.append({'Rodada': int(rodada_corrente), 'Sala': 2, 'Instituição': draw_rodada['2° GOVERNO'].values[1], 'Debatedor': wp_gov, 'Casa': '2° GOVERNO', 'Posição': 'WG', 'Classificação': str(int(call_sala_2[call_sala_2['Delegação'] == draw_rodada['2° GOVERNO'].values[1]].index[0])) + '°', 'Sps': sps_wp_gov}, ignore_index=True)
+                    input_resultado_sala_2 = input_resultado_sala_2.append({'Rodada': int(rodada_corrente), 'Sala': 2, 'Instituição': draw_rodada['2ª OPOSIÇÃO'].values[1], 'Debatedor': ext_op, 'Casa': '2ª OPOSIÇÃO', 'Posição': 'MO', 'Classificação': str(int(call_sala_2[call_sala_2['Delegação'] == draw_rodada['2ª OPOSIÇÃO'].values[1]].index[0])) + '°', 'Sps': sps_ext_op}, ignore_index=True)
+                    input_resultado_sala_2 = input_resultado_sala_2.append({'Rodada': int(rodada_corrente), 'Sala': 2, 'Instituição': draw_rodada['2ª OPOSIÇÃO'].values[1], 'Debatedor': wp_op, 'Casa': '2ª OPOSIÇÃO', 'Posição': 'WO', 'Classificação': str(int(call_sala_2[call_sala_2['Delegação'] == draw_rodada['2ª OPOSIÇÃO'].values[1]].index[0])) + '°', 'Sps': sps_wp_op}, ignore_index=True)
+                    resultado_sala_2 = resultados[(resultados['Rodada'] == int(rodada_corrente)) & (resultados['Sala']==2)]
+                    input_resultado_sala_2 = input_resultado_sala_2.set_index(resultado_sala_2.index)
+                    resultado_sala_2.update(input_resultado_sala_2)
+                    resultados.update(resultado_sala_2)
+                    conn.update(worksheet='TdS_Resultados', data=resultados)
+                    st.success('Resultado da Sala 2 Salvo!')
+                st.divider()
+
+
 
     else:
         st.sidebar.write('### Escalação de Equipe (Rodada ' + str(int(rodada_corrente)) + ')')
@@ -224,12 +365,13 @@ if authentication_status:
     sds["Equipe"] = sds.apply(lambda x: open_image(x['Equipe']), axis=1)
     sds = sds[['Equipe','Instituição','Pontos','N de Primeiros','Total Sps','Juizes Enviados']]
 
+
     st.write('### TABELA DA COMPETIÇÃO')
     st.dataframe(sds,
-                 column_config={
-                     "Total Sps": st.column_config.ProgressColumn('Total Sps', format="%d", min_value=0, max_value=str(sds['Total Sps'].max())),
-                     "Equipe":st.column_config.ImageColumn()
-                 })
+                    column_config={
+                        "Total Sps": st.column_config.ProgressColumn('Total Sps', format="%d", min_value=0, max_value=str(sds['Total Sps'].max())),
+                        "Equipe":st.column_config.ImageColumn()
+                    })
 
     st.divider()
 
@@ -240,7 +382,11 @@ if authentication_status:
 
     with col2:
         st.write('#### Próxima Rodada: ' + str(int(rodada_corrente)) + '(' + str(data_rodada_corrente) + ')')
-        tabela_partidas.loc[rodada_corrente]
+        tabela_rodada = tabela_partidas.loc[rodada_corrente]
+        tabela_rodada = tabela_rodada.set_index('Sala')
+        tabela_rodada = tabela_rodada[['1° GOVERNO','1ª OPOSIÇÃO','2° GOVERNO','2ª OPOSIÇÃO']]
+        tabela_rodada
+        st.write('##### Escalação de Juízes: ' + str(juizes_rodada['Juizes'].to_list()).replace('[','').replace(']','').replace("'",''))
 
     with col10:
         st.write('### CALENDARIO')
